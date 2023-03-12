@@ -16,9 +16,6 @@ int main() {
 	// render game window
 	RenderWindow window (VideoMode(screenRes.x, screenRes.y), "BasicTextures", Style::Fullscreen);	
 
-	// initial view
-	View mainView(sf::FloatRect(0, 0, screenRes.x, screenRes.y));
-
 	// add initial player - place at foot of window, centred
 	Player player(screenRes.x / 2, screenRes.y - 25);	
 
