@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+
 from dataclasses import dataclass, field
 import random
+import math
 
 import pygame
 
@@ -18,6 +20,7 @@ class Palette:
     hazard: pygame.Color = field(default_factory=lambda: pygame.Color("#bf616a"))
     particle: pygame.Color = field(default_factory=lambda: pygame.Color("#a3be8c"))
     wall: pygame.Color = field(default_factory=lambda: pygame.Color("#4c566a"))
+    powerup: pygame.Color = field(default_factory=lambda: pygame.Color("#b48ead"))
 
 
 def _clamp(value: float, lo: float, hi: float) -> float:
@@ -116,6 +119,24 @@ class Hazard(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=center)
 
 
+class PowerUp(pygame.sprite.Sprite):
+    """Collectible that grants temporary invulnerability."""
+
+    DURATION = 5.0
+
+    def __init__(self, center: tuple[int, int], *, color: pygame.Color) -> None:
+        super().__init__()
+        self.anim = Animation(_make_powerup_frames(color), fps=6.0)
+        self.image = self.anim.image
+        self.rect = self.image.get_rect(center=center)
+
+    def update(self, dt: float) -> None:
+        self.anim.update(dt)
+        center = self.rect.center
+        self.image = self.anim.image
+        self.rect = self.image.get_rect(center=center)
+
+
 class Player(pygame.sprite.Sprite):
     def __init__(
         self,
@@ -203,6 +224,7 @@ class Game:
         self.walls: pygame.sprite.Group[Wall] = pygame.sprite.Group()
         self.coins: pygame.sprite.Group[Coin] = pygame.sprite.Group()
         self.hazards: pygame.sprite.Group[Hazard] = pygame.sprite.Group()
+        self.powerups: pygame.sprite.Group[PowerUp] = pygame.sprite.Group()
 
         self.player = Player(self.playfield.center, color=self.palette.player)
         self.all_sprites.add(self.player)
@@ -219,6 +241,7 @@ class Game:
         self.walls.empty()
         self.coins.empty()
         self.hazards.empty()
+        self.powerups.empty()
         self.particles.clear()
 
         self.player = Player(self.playfield.center, color=self.palette.player)
@@ -259,6 +282,11 @@ class Game:
 
                 self.coins.add(candidate)
                 self.all_sprites.add(candidate)
+
+                pw = PowerUp((self.playfield.centerx + 220, self.playfield.centery + 100), color=self.palette.powerup)
+                self.powerups.add(pw)
+                self.all_sprites.add(pw)
+
                 break
 
         if not keep_state:
@@ -368,6 +396,16 @@ class Game:
         if self.cue_particles:
             self._spawn_particles(coin_rect.center, color=self.palette.particle, count=18)
 
+    def _cue_powerup(self, powerup_rect: pygame.Rect) -> None:
+        if self.cue_flash:
+            self.player.flash_for = 0.25
+
+        if self.cue_shake:
+            self._shake_for = max(self._shake_for, 0.12)
+
+        if self.cue_particles:
+            self._spawn_particles(powerup_rect.center, color=self.palette.powerup, count=22)
+
     def _cue_hit(self, source_rect: pygame.Rect) -> None:
         if self.cue_flash:
             self.player.flash_for = 0.18
@@ -433,11 +471,17 @@ class Game:
             self.player.score += len(picked)
             self._cue_coin(picked[0].rect)
 
+        grabbed = pygame.sprite.spritecollide(self.player, self.powerups, dokill=True)
+        if grabbed:
+            self.player.invincible_for = PowerUp.DURATION
+            self._cue_powerup(grabbed[0].rect)
+
         for hz in pygame.sprite.spritecollide(self.player, self.hazards, dokill=False):
             self._apply_damage(hz.rect)
 
         self.coins.update(dt)
         self.hazards.update(dt)
+        self.powerups.update(dt)
         self.player.update(dt)
 
         if len(self.coins) == 0:
@@ -475,6 +519,9 @@ class Game:
 
         for hz in self.hazards:
             self.screen.blit(hz.image, hz.rect.move(cam))
+
+        for pw in self.powerups:
+            self.screen.blit(pw.image, pw.rect.move(cam))
 
         player_image = self.player.image
         if self.cue_flash and self.player.flash_for > 0:
@@ -531,6 +578,25 @@ def _make_coin_frames(color: pygame.Color) -> list[pygame.Surface]:
         sparkle = pygame.Color("#ffffff")
         sparkle.a = 180
         pygame.draw.circle(surf, sparkle, (cx - r // 3, cy - r // 3), max(1, r // 5))
+
+        frames.append(surf)
+
+    return frames
+
+def _make_powerup_frames(color: pygame.Color) -> list[pygame.Surface]:
+    frames: list[pygame.Surface] = []
+    size = 36
+
+    for i in range(6):
+        surf = pygame.Surface((size, size), pygame.SRCALPHA)
+        cx, cy = size // 2, size // 2
+
+        # Pulse the diamond slightly across frames
+        pulse = 1.0 + 0.1 * math.sin(math.pi * 2 * i / 6.0)
+        half = int((size // 2 - 4) * pulse)
+        pts = [(cx, cy - half), (cx + half, cy), (cx, cy + half), (cx - half, cy)]
+        pygame.draw.polygon(surf, color, pts)
+        pygame.draw.polygon(surf, pygame.Color("#000000"), pts, 2)
 
         frames.append(surf)
 
