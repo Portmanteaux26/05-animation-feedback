@@ -159,6 +159,7 @@ class Player(pygame.sprite.Sprite):
 
         self.hp = 3
         self.invincible_for = 0.0
+        self.powered = False
 
         self.score = 0
 
@@ -183,6 +184,8 @@ class Player(pygame.sprite.Sprite):
 
         if self.invincible_for > 0:
             self.invincible_for = max(0.0, self.invincible_for - dt)
+            if self.invincible_for == 0.0:
+                self.powered = False
 
         if self.flash_for > 0:
             self.flash_for = max(0.0, self.flash_for - dt)
@@ -466,7 +469,9 @@ class Game:
         self.player.vel.update(move * self.player.speed)
 
         speed2 = self.player.vel.length_squared()
-        if self.player.is_invincible:
+        if self.player.powered:
+            self.player.set_state("powered")
+        elif self.player.is_invincible:
             self.player.set_state("hurt")
         elif speed2 < 1.0:
             self.player.set_state("idle")
@@ -484,6 +489,7 @@ class Game:
         grabbed = pygame.sprite.spritecollide(self.player, self.powerups, dokill=True)
         if grabbed:
             self.player.invincible_for = PowerUp.DURATION
+            self.player.powered = True
             self._cue_powerup(grabbed[0].rect)
 
         for hz in pygame.sprite.spritecollide(self.player, self.hazards, dokill=False):
@@ -644,10 +650,18 @@ def _make_player_anims(color: pygame.Color) -> dict[str, Animation]:
         _draw_player_frame(pygame.Color("#bf616a"), leg_phase=2, eye_open=False),
     ]
 
+    powered_frames = [
+        _draw_player_frame(pygame.Color("#b48ead"), leg_phase=0, eye_open=True),
+        _draw_player_frame(pygame.Color("#d4a8d0"), leg_phase=1, eye_open=True),
+        _draw_player_frame(pygame.Color("#b48ead"), leg_phase=2, eye_open=True),
+        _draw_player_frame(pygame.Color("#d4a8d0"), leg_phase=3, eye_open=True),
+    ]
+
     return {
         "idle": Animation(idle, fps=1.0),
         "run": Animation(run_frames, fps=10.0),
         "hurt": Animation(hurt_frames, fps=8.0),
+        "powered": Animation(powered_frames, fps=8.0),
     }
 
 
