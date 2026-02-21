@@ -198,6 +198,10 @@ class Game:
     def __init__(self) -> None:
         self.palette = Palette()
 
+        self.snd_coin = _make_sound(frequency=600, duration=0.12, volume=0.4, exponential=True)
+        self.snd_hit = _make_sound(frequency=60, duration=0.12, volume=0.7, exponential=True)
+        self.snd_powerup = _make_sweep_sound(freq_start=40, freq_end=160, duration=1.5, volume=0.5)
+
         self.screen = pygame.display.set_mode((self.SCREEN_W, self.SCREEN_H))
         self.font = pygame.font.SysFont(None, 22)
         self.big_font = pygame.font.SysFont(None, 40)
@@ -396,6 +400,8 @@ class Game:
         if self.cue_particles:
             self._spawn_particles(coin_rect.center, color=self.palette.particle, count=18)
 
+        self.snd_coin.play()
+
     def _cue_powerup(self, powerup_rect: pygame.Rect) -> None:
         if self.cue_flash:
             self.player.flash_for = 0.25
@@ -405,6 +411,8 @@ class Game:
 
         if self.cue_particles:
             self._spawn_particles(powerup_rect.center, color=self.palette.powerup, count=22)
+
+        self.snd_powerup.play()
 
     def _cue_hit(self, source_rect: pygame.Rect) -> None:
         if self.cue_flash:
@@ -418,6 +426,8 @@ class Game:
 
         if self.cue_particles:
             self._spawn_particles(self.player.rect.center, color=self.palette.hazard, count=26)
+
+        self.snd_hit.play()
 
     def _apply_damage(self, source_rect: pygame.Rect) -> None:
         if self.player.is_invincible:
@@ -679,3 +689,33 @@ def _draw_player_frame(color: pygame.Color, *, leg_phase: int, eye_open: bool) -
     pygame.draw.line(surf, pygame.Color("#2e3440"), (body.right - 3, arm_y), (body.right + 6, arm_y + 3), 4)
 
     return surf
+
+def _make_sound(*, frequency: float, duration: float, volume: float, exponential: bool = False) -> pygame.mixer.Sound:
+    sample_rate = 44100
+    n_samples = int(sample_rate * duration)
+    buf = bytearray(n_samples)
+    for i in range(n_samples):
+        t = i / sample_rate
+        if exponential:
+            fade = math.exp(-8.0 * i / n_samples)
+        else:
+            fade = 1.0 - (i / n_samples)
+        val = int(127 + 127 * math.sin(2 * math.pi * frequency * t) * fade)
+        buf[i] = val
+    sound = pygame.mixer.Sound(buffer=bytes(buf))
+    sound.set_volume(volume)
+    return sound
+
+def _make_sweep_sound(*, freq_start: float, freq_end: float, duration: float, volume: float) -> pygame.mixer.Sound:
+    sample_rate = 44100
+    n_samples = int(sample_rate * duration)
+    buf = bytearray(n_samples)
+    for i in range(n_samples):
+        t = i / sample_rate
+        freq = freq_start + (freq_end - freq_start) * (i / n_samples)
+        fade = math.exp(-4.0 * i / n_samples)
+        val = int(127 + 127 * math.sin(2 * math.pi * freq * t) * fade)
+        buf[i] = val
+    sound = pygame.mixer.Sound(buffer=bytes(buf))
+    sound.set_volume(volume)
+    return sound
