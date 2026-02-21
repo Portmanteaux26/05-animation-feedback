@@ -22,15 +22,16 @@ From this folder:
 ## In this week
 - **Invincibility power-up:** lasts 5 second, protects player from hazards
 - **Sfx:** coin pick-up ("clink"), hazard hit ("bump"), power-up (upward sweep)
+- **Revised vfx:** flash for hit and power-up changed to sprite shape rather than bounding box
 
 ## Weekly tuning notes
 - Power-up anim initially a simple pulse over 12 frames
   - was too similar to coin anim
   - used sine easing to make a heartbeat-like effect over 6 frames
-- Coin sound: started at 800Hz/0.08s linear fade, felt like a "chit", too harsh
+- Coin sound started at 800Hz/0.08s linear fade, felt like a "chit", too harsh
   - switched to exponential decay, closer to a clink
   - settled on 600Hz, warmer and less piercing
-- Hit sound: initially tried 160Hz sine, too similar to coin, not impactful enough
+- Hit sound: initially a 160Hz sine, too similar to coin, not impactful enough
   - dropped to 60Hz with exponential decay, punchy low bump
-- Power-up sound: "glissando" sweep started at 300Hz→900Hz/0.25s, felt thin
+- Power-up sound "glissando" sweep started at 300Hz→900Hz/0.25s, felt thin
   - settled on 40Hz→160Hz/1.5s, slow low rumble feels weighty and rewarding

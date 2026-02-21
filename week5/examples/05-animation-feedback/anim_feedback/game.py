@@ -536,7 +536,9 @@ class Game:
         player_image = self.player.image
         if self.cue_flash and self.player.flash_for > 0:
             player_image = player_image.copy()
-            player_image.fill((255, 255, 255, 120), special_flags=pygame.BLEND_RGBA_ADD)
+            mask = pygame.mask.from_surface(player_image)
+            mask_surf = mask.to_surface(setcolor=(255, 255, 255, 120), unsetcolor=(0, 0, 0, 0))
+            player_image.blit(mask_surf, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
         self.screen.blit(player_image, self.player.rect.move(cam))
 
         for p in self.particles:
